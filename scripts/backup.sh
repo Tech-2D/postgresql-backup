@@ -22,10 +22,11 @@ PY
 )
 [[ ${#settings[@]} == 5 ]] || { echo 'Conexão direta de backup inválida'; exit 1; }
 export PGHOST="${settings[0]}" PGPORT="${settings[1]}" PGUSER="${settings[2]}" PGPASSWORD="${settings[3]}" PGDATABASE="${settings[4]}"
-export PGSSLMODE=verify-full PGSSLROOTCERT=system PGCONNECT_TIMEOUT=20
+export PGSSLMODE=verify-full PGSSLROOTCERT=/backup-ca.pem PGCONNECT_TIMEOUT=20
 unset NEON_BACKUP_URL settings
 docker run --rm --user "$(id -u):$(id -g)" \
   -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE -e PGSSLROOTCERT -e PGCONNECT_TIMEOUT \
+  -v /etc/ssl/certs/ca-certificates.crt:/backup-ca.pem:ro \
   -v "$dir:/backup" "$image" pg_dump --no-password --format=custom --schema=tech2d \
   --enable-row-security --no-owner --no-acl --file=/backup/neon.dump
 unset PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE PGSSLROOTCERT PGCONNECT_TIMEOUT
