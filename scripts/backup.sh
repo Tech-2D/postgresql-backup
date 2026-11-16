@@ -24,11 +24,14 @@ PY
 export PGHOST="${settings[0]}" PGPORT="${settings[1]}" PGUSER="${settings[2]}" PGPASSWORD="${settings[3]}" PGDATABASE="${settings[4]}"
 export PGSSLMODE=verify-full PGSSLROOTCERT=/backup-ca.pem PGCONNECT_TIMEOUT=20
 unset NEON_BACKUP_URL settings
-docker run --rm --user "$(id -u):$(id -g)" \
+if ! docker run --rm --user "$(id -u):$(id -g)" \
   -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE -e PGSSLROOTCERT -e PGCONNECT_TIMEOUT \
   -v /etc/ssl/certs/ca-certificates.crt:/backup-ca.pem:ro \
   -v "$dir:/backup" "$image" pg_dump --no-password --format=custom --schema=tech2d \
-  --enable-row-security --no-owner --no-acl --file=/backup/neon.dump
+  --enable-row-security --no-owner --no-acl --file=/backup/neon.dump 2>"$dir/pg_dump.err"; then
+  echo 'Falha ao gerar o dump. Confira acesso, TLS e permissões da conexão de backup.'
+  exit 1
+fi
 unset PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE PGSSLROOTCERT PGCONNECT_TIMEOUT
 test -s "$dir/neon.dump"
 
@@ -39,8 +42,11 @@ for attempt in {1..60}; do
 done
 docker exec "$container" psql -X --host=127.0.0.1 --username=postgres --set=ON_ERROR_STOP=1 --quiet \
   -c 'CREATE ROLE tech2d_backup NOLOGIN; CREATE ROLE tech2d_api NOLOGIN;'
-docker exec -i "$container" pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --no-owner --no-acl \
-  --exit-on-error --single-transaction < "$dir/neon.dump"
+if ! docker exec -i "$container" pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --no-owner --no-acl \
+  --exit-on-error --single-transaction < "$dir/neon.dump" 2>"$dir/pg_restore.err"; then
+  echo 'O dump falhou no teste de restauração descartável.'
+  exit 1
+fi
 docker exec -i "$container" psql -X --host=127.0.0.1 --username=postgres --set=ON_ERROR_STOP=1 --quiet <<'SQL'
 DO $$
 BEGIN
