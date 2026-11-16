@@ -1,0 +1,10 @@
+{
+  "name": "tech-2d-neon-backup-upload",
+  "account_id": "67606a241ef48fd5694950bd65a3d33e",
+  "main": "upload-worker.mjs",
+  "compatibility_date": "2026-11-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "tech-2d-neon-backups" }]
+}

@@ -1,0 +1,28 @@
+name: Backup do Neon
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neon-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gerar e restaurar em banco descartável
+        run: bash scripts/backup.sh
+        env:
+          NEON_BACKUP_URL: ${{ secrets.NEON_BACKUP_URL }}
+      - name: Enviar ao R2 privado
+        run: bash scripts/upload.sh
+        env:
+          BACKUP_UPLOAD_URL: ${{ vars.BACKUP_UPLOAD_URL }}
+          BACKUP_UPLOAD_SECRET: ${{ secrets.BACKUP_UPLOAD_SECRET }}
